@@ -1,144 +1,182 @@
-// ResolveAI v2 — Results (the magic moment)
+// ResolveAI v2 — Results (renders live Gemini output)
 function Results({ setRoute }) {
   const [copied, setCopied] = React.useState(false);
   const [regenerating, setRegenerating] = React.useState(false);
   const [draftVariant, setDraftVariant] = React.useState(0);
 
+  const state = window.resolveState || {};
+  const data = state.data || null;
+  const apiError = state.error || null;
+
+  // ── Error state ────────────────────────────────────────────────────────────
+  if (apiError && !data) {
+    return (
+      <div className="fade-in">
+        <section className="page results">
+          <div className="results-head">
+            <div className="topline">
+              <span><span style={{ color: 'var(--mute)' }}>State —</span> <span style={{ color: 'var(--accent)' }}>analysis failed</span></span>
+            </div>
+            <h1>Something went <em>wrong.</em></h1>
+            <p className="summary" style={{ color: 'var(--accent)' }}>{apiError}</p>
+          </div>
+          <div style={{ marginTop: 40, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={() => { setRoute('upload'); window.scrollTo({ top: 0, behavior: 'instant' }); }}>
+              Try again <span className="arrow">→</span>
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setRoute('landing'); window.scrollTo({ top: 0, behavior: 'instant' }); }}>
+              Back to home
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ── No data at all (direct URL access) ────────────────────────────────────
+  if (!data) {
+    return (
+      <div className="fade-in">
+        <section className="page results">
+          <div className="results-head">
+            <h1>No analysis <em>found.</em></h1>
+            <p className="summary">Please upload a document or describe your dispute first.</p>
+          </div>
+          <div style={{ marginTop: 40 }}>
+            <button className="btn btn-primary" onClick={() => { setRoute('upload'); window.scrollTo({ top: 0, behavior: 'instant' }); }}>
+              Start a dispute <span className="arrow">→</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ── Destructure live data ──────────────────────────────────────────────────
+  const {
+    issue_type = 'Dispute',
+    company_name = 'Unknown',
+    severity = 'Medium',
+    summary = '',
+    recommended_action = '',
+    confidence_score = 0,
+    escalation_path = {},
+    draft_emails = {},
+  } = data;
+
+  const {
+    next_step = 'Escalation officer',
+    expected_reply = 'Check with the company',
+    fallback = 'Consumer Court',
+    likelihood = 'Moderate',
+  } = escalation_path;
+
   const drafts = [
-    {
-      label: 'Standard',
-      body:
-`Subject: Refund escalation — PNR 4HQ8X2, ticket 88312 (day 34)
+    { label: 'Standard', body: draft_emails.standard || '' },
+    { label: 'Firm', body: draft_emails.firm || '' },
+    { label: 'Brief', body: draft_emails.brief || '' },
+  ].filter((d) => d.body.trim().length > 0);
 
-To: nodal.officer@aircarrier.example
-Cc: customer.relations@aircarrier.example
+  // Fallback if Gemini only returned one draft
+  const currentDraft = drafts[draftVariant] || drafts[0] || { label: 'Draft', body: '' };
+  const wordCount = currentDraft.body.split(/\s+/).filter(Boolean).length;
 
-Dear Nodal Officer,
+  // Severity colour
+  const sevColor = severity === 'High' ? 'var(--accent, #c0392b)' : severity === 'Low' ? 'var(--ink-2)' : 'var(--ink)';
 
-I am writing to escalate an unresolved refund for booking PNR 4HQ8X2. The flight was cancelled by the carrier on March 4, 2026. A refund was acknowledged on March 6 with a stated processing window of seven to ten working days. As of today, day 34, no credit has been issued.
-
-I have followed up twice through ticket 88312. Both responses were automated and did not include a revised timeline or transaction reference. I am attaching the original booking confirmation, cancellation notice, and both follow-up tickets.
-
-Under your published service commitments, I request the refund be processed and a confirmation of credit issued within seven calendar days. Failing this, I will file a formal complaint with the appropriate regulatory authority and the consumer commission.
-
-I would appreciate a written response with a clear timeline.
-
-Regards,
-[Your name]
-[Phone number]
-[Email]`
-    },
-    {
-      label: 'Firm',
-      body:
-`Subject: Final escalation before regulatory complaint — PNR 4HQ8X2
-
-To: nodal.officer@aircarrier.example
-Cc: customer.relations@aircarrier.example
-
-Dear Nodal Officer,
-
-This is a formal escalation regarding the unresolved refund for booking PNR 4HQ8X2, cancelled by the carrier on March 4, 2026. Despite a stated seven to ten working day processing window, the refund has not been issued at day 34. Two follow-ups on ticket 88312 have returned only automated responses with no transaction reference.
-
-I am requesting the refund be credited within five calendar days, accompanied by written confirmation. If this is not resolved, I will escalate to the regulator and pursue compensation for the delay, including interest for the period the funds were withheld.
-
-I have attached the booking confirmation, cancellation notice, and previous correspondence.
-
-Regards,
-[Your name]
-[Phone number]
-[Email]`
-    },
-    {
-      label: 'Brief',
-      body:
-`Subject: Refund escalation — PNR 4HQ8X2 (day 34)
-
-To: nodal.officer@aircarrier.example
-
-Dear Nodal Officer,
-
-Refund for cancelled flight, PNR 4HQ8X2, is outstanding 24 days beyond the stated timeline. Two follow-ups on ticket 88312 received automated replies only.
-
-Please confirm processing within seven calendar days. Attaching booking, cancellation, and prior correspondence.
-
-Regards,
-[Your name]`
-    },
-  ];
-
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCopy = () => {
-    const text = drafts[draftVariant].body;
-    if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+    if (navigator.clipboard) navigator.clipboard.writeText(currentDraft.body).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
 
   const handleRegen = () => {
+    if (drafts.length <= 1) return;
     setRegenerating(true);
     setTimeout(() => {
-      setDraftVariant((draftVariant + 1) % drafts.length);
+      setDraftVariant((v) => (v + 1) % drafts.length);
       setRegenerating(false);
-    }, 700);
+    }, 500);
   };
 
+  // Store current draft for Action page
+  window.resolveState.activeDraft = currentDraft;
+  window.resolveState.allDrafts = drafts;
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="fade-in">
       <section className="page results">
-        {/* TOP — heading */}
+
+        {/* ── TOP — heading ─────────────────────────────────────── */}
         <div className="results-head">
           <div className="topline">
-            <span><span style={{color:'var(--mute)'}}>State —</span> <span className="acc">analysis complete</span></span>
-            <span style={{color:'var(--mute)'}}>14.2s · 92% confidence</span>
+            <span>
+              <span style={{ color: 'var(--mute)' }}>State —</span>{' '}
+              <span className="acc">analysis complete</span>
+            </span>
+            <span style={{ color: 'var(--mute)' }}>{confidence_score}% confidence</span>
           </div>
 
           <h1>
-            Here&rsquo;s<br/>
+            Here&rsquo;s<br />
             <em>what we found.</em>
           </h1>
 
-          <p className="summary">
-            Your airline refund is delayed beyond the carrier&rsquo;s own stated timeline. Based on message tone and ticket history, automated stalling is likely. A direct nodal-officer escalation is the highest-leverage next move.
-          </p>
+          <p className="summary">{summary}</p>
         </div>
 
         <div className="results-grid">
-          {/* § I — BREAKDOWN */}
+
+          {/* ── § I — Dispute breakdown ───────────────────────────── */}
           <div>
             <div className="sec-head">
               <div className="num">§ I</div>
               <div className="lbl">
                 <div className="title">Dispute breakdown</div>
-                <div className="meta">Case 2491 · classified</div>
+                <div className="meta">
+                  {company_name} · {issue_type.toLowerCase()}
+                </div>
               </div>
             </div>
+
             <div className="breakdown-table">
               <div className="row">
                 <span className="k">Issue type</span>
-                <span className="v">Refund delay <em>—</em> flight cancellation</span>
+                <span className="v">
+                  {issue_type} <em>—</em> {company_name}
+                </span>
                 <span></span>
               </div>
+
               <div className="row">
                 <span className="k">Severity</span>
-                <span className="v">High <em>—</em> funds held 24 days past commitment</span>
-                <span className="tag warn">High</span>
+                <span className="v" style={{ color: sevColor }}>
+                  {severity}
+                </span>
+                <span className="tag warn">{severity}</span>
               </div>
-              <div className="row">
-                <span className="k">Company risk</span>
-                <span className="v">Likely <em>stall</em> — automated replies, no ETA</span>
-                <span className="tag warn">Stall</span>
-              </div>
+
               <div className="row">
                 <span className="k">Recommended action</span>
-                <span className="v">Escalate to <em>nodal officer</em>, 7-day window</span>
-                <span className="tag accent">Nodal</span>
+                <span className="v">
+                  Escalate to <em>{next_step}</em>
+                </span>
+                <span className="tag accent">{next_step.split(' ')[0]}</span>
               </div>
+
               <div className="row">
                 <span className="k">Confidence</span>
                 <span className="v">
                   <span className="confidence-bar">
-                    <span className="track"><span className="fill" style={{width:'92%'}}></span></span>
-                    <span className="pct">92%</span>
+                    <span className="track">
+                      <span
+                        className="fill"
+                        style={{ width: `${Math.min(100, Math.max(0, confidence_score))}%` }}
+                      ></span>
+                    </span>
+                    <span className="pct">{confidence_score}%</span>
                   </span>
                 </span>
                 <span></span>
@@ -146,71 +184,105 @@ Regards,
             </div>
           </div>
 
-          {/* § II — RECOMMENDATION (magic moment) */}
+          {/* ── § II — Recommendation ────────────────────────────────── */}
           <div>
             <div className="recommend">
               <h3 className="action">
-                Escalate to the airline&rsquo;s<br/>
-                <em>nodal officer.</em>
+                {recommended_action.length > 60
+                  ? recommended_action.slice(0, recommended_action.lastIndexOf(' ', 55)) + '…'
+                  : recommended_action}
               </h3>
               <p className="reason">
-                Nodal officers are designated for unresolved cases that exceed the carrier&rsquo;s own service timeline. A written escalation, with attached evidence and a 7-day response window, typically converts within five working days. Carbon-copying customer relations preserves a paper trail without prematurely involving the regulator.
+                {next_step} escalation is the correct channel for your case type. A written escalation,
+                with attached evidence and a clear deadline, significantly increases the probability
+                of resolution. If ignored, you have a direct path to {fallback}.
               </p>
+
               <div className="recommend-meta">
                 <div className="item">
                   <div className="k">Expected reply</div>
-                  <div className="v">5<em>–</em>7 business days</div>
+                  <div className="v">{expected_reply}</div>
                 </div>
                 <div className="item">
                   <div className="k">Likelihood</div>
-                  <div className="v"><em>Strong</em> — cohort data</div>
+                  <div className="v">
+                    <em>{likelihood}</em> — cohort data
+                  </div>
                 </div>
                 <div className="item">
                   <div className="k">Fallback</div>
-                  <div className="v">DGCA &amp; consumer commission</div>
+                  <div className="v">{fallback}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* § III — DRAFT */}
+          {/* ── § III — Draft email ──────────────────────────────────── */}
           <div>
             <div className="sec-head">
               <div className="num">§ III</div>
               <div className="lbl">
                 <div className="title">Escalation draft</div>
-                <div className="meta">Tone · {drafts[draftVariant].label} · {drafts[draftVariant].body.split(' ').length} words</div>
+                <div className="meta">
+                  Tone · {currentDraft.label} · {wordCount} words
+                </div>
               </div>
             </div>
 
             <div className="draft">
               <div className="draft-head">
-                <span className="label">Draft / Tone · {drafts[draftVariant].label}</span>
+                <span className="label">Draft / Tone · {currentDraft.label}</span>
                 <div className="actions">
-                  <button className={"icon-btn" + (copied ? ' copied' : '')} onClick={handleCopy}>
+                  <button
+                    className={'icon-btn' + (copied ? ' copied' : '')}
+                    onClick={handleCopy}
+                  >
                     {copied ? '✓ Copied' : '⎘ Copy'}
                   </button>
-                  <button className="icon-btn" onClick={handleRegen}>
-                    ↻ Regenerate
-                  </button>
+                  {drafts.length > 1 && (
+                    <button className="icon-btn" onClick={handleRegen}>
+                      ↻ Switch tone
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="draft-body" style={{opacity: regenerating ? 0.4 : 1, transition:'opacity .3s'}}>
-                {drafts[draftVariant].body}
+
+              <div
+                className="draft-body"
+                style={{
+                  opacity: regenerating ? 0.4 : 1,
+                  transition: 'opacity .3s',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {currentDraft.body}
               </div>
+
               <div className="draft-foot">
-                <span>Tuned by cohort outcomes · response rate +3.1×</span>
+                <span>Generated by Gemini 2.5 Flash · personalise before sending</span>
                 <div className="actions">
-                  <button className="btn btn-ghost btn-sm" onClick={() => setDraftVariant(d => (d+1) % drafts.length)}>
-                    Switch tone
-                  </button>
-                  <button className="btn btn-accent btn-sm" onClick={() => setRoute('action')}>
+                  {drafts.length > 1 && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setDraftVariant((v) => (v + 1) % drafts.length)}
+                    >
+                      Switch tone
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-accent btn-sm"
+                    onClick={() => {
+                      window.resolveState.activeDraft = currentDraft;
+                      setRoute('action');
+                    }}
+                  >
                     Take action <span className="arrow">→</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
+
         </div>
       </section>
     </div>
