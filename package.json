@@ -3,6 +3,9 @@
   "version": "0.3.0",
   "private": true,
   "description": "ResolveAI — AI-powered consumer dispute escalation. Static HTML + React (CDN). Three visual variants.",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0"
+  },
   "scripts": {
     "start": "npx --yes serve@latest .",
     "dev": "npx --yes serve@latest ."
