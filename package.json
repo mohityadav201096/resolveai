@@ -1,0 +1,21 @@
+{
+  "name": "resolveai",
+  "version": "0.3.0",
+  "private": true,
+  "description": "ResolveAI — AI-powered consumer dispute escalation. Static HTML + React (CDN). Three visual variants.",
+  "scripts": {
+    "start": "npx --yes serve@latest .",
+    "dev": "npx --yes serve@latest ."
+  },
+  "keywords": [
+    "consumer-disputes",
+    "escalation",
+    "ai",
+    "react",
+    "prototype"
+  ],
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  }
+}
