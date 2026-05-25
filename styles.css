@@ -1465,3 +1465,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .stack-sm > * + * { margin-top: 8px; }
 .stack > * + * { margin-top: 16px; }
 .stack-lg > * + * { margin-top: 24px; }
+
+.btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn-ghost:hover { background: var(--bg-deep); }
