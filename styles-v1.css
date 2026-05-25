@@ -1266,3 +1266,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   color: var(--mute);
   min-width: 24px;
 }
+
+.btn-ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn-ghost:hover { background: var(--bg-deep); }
