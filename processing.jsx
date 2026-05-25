@@ -108,7 +108,7 @@ function Processing({ setRoute }) {
                   : i === active
                   ? failed
                     ? '— error'
-                    : '— '
+                    : '— running'
                   : '— queued'}
               </span>
             </div>
