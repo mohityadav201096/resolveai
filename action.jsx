@@ -114,7 +114,7 @@ function ActionPage({ setRoute }) {
     {
       idx: '02',
       label: <span>Open in <em>Gmail</em></span>,
-      desc: 'Pre-filled subject, recipient, body',
+      desc: 'Pre-filled subject and body — add the recipient',
       action: handleGmail,
     },
     {
@@ -149,6 +149,20 @@ function ActionPage({ setRoute }) {
           Your draft is ready. Pick how you want to send it.
         </p>
 
+        {/* Placeholder reminder */}
+        <div style={{
+          background: 'var(--warn-soft, #fff8e6)',
+          border: '1px solid var(--warn, #b8860b)',
+          borderRadius: 4,
+          padding: '10px 16px',
+          marginBottom: 28,
+          fontSize: 13,
+          color: 'var(--warn, #7a5700)',
+          lineHeight: 1.55,
+        }}>
+          Before sending — replace <strong>[Your Name]</strong>, <strong>[Your Phone]</strong>, and <strong>[Your Email]</strong> in the draft with your real details.
+        </div>
+
         <div className="action-grid">
           {tiles.map((t) => (
             <button
@@ -177,7 +191,7 @@ function ActionPage({ setRoute }) {
           maxWidth: '52ch',
           letterSpacing: '-0.008em',
         }}>
-          Clear escalation language improves response probability roughly three times in cases similar to yours.
+          A clear, deadline-driven escalation is more likely to be taken seriously than a follow-up support ticket.
         </p>
 
         <FeedbackBlock />
