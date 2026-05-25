@@ -29,7 +29,7 @@ function Upload({ setRoute }) {
 
   // ── Analyse a real file ────────────────────────────────────────────────────
   const analyzeFile = (file) => {
-    const MAX_MB = 8;
+    const MAX_MB = 4;
     if (file.size > MAX_MB * 1024 * 1024) {
       setErrorMsg(`File is too large. Please upload a file under ${MAX_MB} MB.`);
       setStatus('error');
@@ -38,7 +38,7 @@ function Upload({ setRoute }) {
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!allowed.includes(file.type)) {
-      setErrorMsg('Unsupported file type. Please upload a JPG, PNG, or PDF.');
+      setErrorMsg('Unsupported file type. Please upload a JPG, PNG, WebP, or PDF.');
       setStatus('error');
       return;
     }
@@ -50,7 +50,7 @@ function Upload({ setRoute }) {
     reader.onload = () => {
       // Strip the "data:<mime>;base64," prefix — send only the raw base64 data
       const base64 = reader.result.split(',')[1];
-      const apiPromise = fetch('/api/analyze', {
+      const fetchPromise = fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,7 +60,12 @@ function Upload({ setRoute }) {
         }),
       }).then((r) => r.json());
 
-      startAnalysis(apiPromise);
+      // 28s client-side timeout — Vercel cuts the function at 30s
+      const timeoutPromise = new Promise((resolve) =>
+        setTimeout(() => resolve({ error: 'Analysis timed out. Please try again — if this keeps happening, try a smaller file.' }), 28000)
+      );
+
+      startAnalysis(Promise.race([fetchPromise, timeoutPromise]));
     };
     reader.onerror = () => {
       setErrorMsg('Could not read the file. Please try again.');
@@ -72,13 +77,17 @@ function Upload({ setRoute }) {
   // ── Analyse a chip description ─────────────────────────────────────────────
   const analyzeChip = () => {
     if (!activeChip) return;
-    const apiPromise = fetch('/api/analyze', {
+    const fetchPromise = fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: activeChip }),
     }).then((r) => r.json());
 
-    startAnalysis(apiPromise);
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve({ error: 'Analysis timed out. Please try again.' }), 28000)
+    );
+
+    startAnalysis(Promise.race([fetchPromise, timeoutPromise]));
   };
 
   // ── Sample mode — pre-built mock, no API call ──────────────────────────────
@@ -167,7 +176,7 @@ Regards,
           <div className="num">§ I</div>
           <div className="lbl">
             <div className="title">Upload</div>
-            <div className="meta">JPG · PNG · PDF · up to 8 MB</div>
+            <div className="meta">JPG · PNG · WebP · PDF · up to 4 MB</div>
           </div>
         </div>
 
@@ -248,7 +257,7 @@ Regards,
                 style={{ display: 'none' }}
                 onChange={onPick}
               />
-              <div className="formats">JPG · PNG · PDF · 8 MB max</div>
+              <div className="formats">JPG · PNG · WebP · PDF · 4 MB max</div>
             </div>
 
             {/* Chip quick-select */}
@@ -342,8 +351,8 @@ Regards,
               color: 'var(--mute)',
               lineHeight: 1.7,
             }}>
-              ∎ End-to-end encrypted<br />
-              ∎ Auto-deleted within one hour<br />
+              ∎ Transmitted over HTTPS<br />
+              ∎ Not stored by our servers<br />
               ∎ No account required
             </p>
           </div>
