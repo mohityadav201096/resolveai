@@ -116,7 +116,7 @@ function Results({ setRoute }) {
               <span style={{ color: 'var(--mute)' }}>State —</span>{' '}
               <span className="acc">analysis complete</span>
             </span>
-            <span style={{ color: 'var(--mute)' }}>{confidence_score}% confidence</span>
+            <span style={{ color: 'var(--mute)' }}>AI estimate · {confidence_score}%</span>
           </div>
 
           <h1>
@@ -186,17 +186,22 @@ function Results({ setRoute }) {
 
           {/* ── § II — Recommendation ────────────────────────────────── */}
           <div>
+            <div className="sec-head">
+              <div className="num">§ II</div>
+              <div className="lbl">
+                <div className="title">Recommended action</div>
+                <div className="meta">{next_step} · {likelihood.toLowerCase()} likelihood</div>
+              </div>
+            </div>
             <div className="recommend">
               <h3 className="action">
-                {recommended_action.length > 60
-                  ? recommended_action.slice(0, recommended_action.lastIndexOf(' ', 55)) + '…'
-                  : recommended_action}
+                {(() => {
+                  if (recommended_action.length <= 60) return recommended_action;
+                  const cut = recommended_action.lastIndexOf(' ', 55);
+                  return (cut > 0 ? recommended_action.slice(0, cut) : recommended_action.slice(0, 55)) + '…';
+                })()}
               </h3>
-              <p className="reason">
-                {next_step} escalation is the correct channel for your case type. A written escalation,
-                with attached evidence and a clear deadline, significantly increases the probability
-                of resolution. If ignored, you have a direct path to {fallback}.
-              </p>
+              <p className="reason">{recommended_action}</p>
 
               <div className="recommend-meta">
                 <div className="item">
@@ -206,7 +211,7 @@ function Results({ setRoute }) {
                 <div className="item">
                   <div className="k">Likelihood</div>
                   <div className="v">
-                    <em>{likelihood}</em> — cohort data
+                    <em>{likelihood}</em> — AI estimate
                   </div>
                 </div>
                 <div className="item">
