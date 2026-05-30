@@ -2,7 +2,15 @@
 function Results({ setRoute }) {
   const [copied, setCopied] = React.useState(false);
   const [regenerating, setRegenerating] = React.useState(false);
-  const [draftVariant, setDraftVariant] = React.useState(0);
+  // Initialise to the variant requested by handleStronger (via resolveState.requestedVariant)
+  const [draftVariant, setDraftVariant] = React.useState(() => {
+    const requested = window.resolveState?.requestedVariant;
+    if (!requested) return 0;
+    window.resolveState.requestedVariant = null; // consume once
+    const allDrafts = window.resolveState?.allDrafts || [];
+    const idx = allDrafts.findIndex((d) => d.label === requested);
+    return idx >= 0 ? idx : 0;
+  });
 
   const state = window.resolveState || {};
   const data = state.data || null;
@@ -77,9 +85,12 @@ function Results({ setRoute }) {
     { label: 'Brief', body: draft_emails.brief || '' },
   ].filter((d) => d.body.trim().length > 0);
 
-  // Fallback if Gemini only returned one draft
+  const noDrafts = drafts.length === 0;
   const currentDraft = drafts[draftVariant] || drafts[0] || { label: 'Draft', body: '' };
   const wordCount = currentDraft.body.split(/\s+/).filter(Boolean).length;
+
+  // Hide "Unknown" company name — only show if Gemini extracted a real name
+  const displayCompany = company_name && company_name !== 'Unknown' ? company_name : null;
 
   // Severity colour
   const sevColor = severity === 'High' ? 'var(--accent, #c0392b)' : severity === 'Low' ? 'var(--ink-2)' : 'var(--ink)';
@@ -136,7 +147,7 @@ function Results({ setRoute }) {
               <div className="lbl">
                 <div className="title">Dispute breakdown</div>
                 <div className="meta">
-                  {company_name} · {issue_type.toLowerCase()}
+                  {displayCompany ? `${displayCompany} · ` : ''}{issue_type.toLowerCase()}
                 </div>
               </div>
             </div>
@@ -145,7 +156,7 @@ function Results({ setRoute }) {
               <div className="row">
                 <span className="k">Issue type</span>
                 <span className="v">
-                  {issue_type} <em>—</em> {company_name}
+                  {issue_type}{displayCompany ? <> <em>—</em> {displayCompany}</> : ''}
                 </span>
                 <span></span>
               </div>
@@ -194,13 +205,6 @@ function Results({ setRoute }) {
               </div>
             </div>
             <div className="recommend">
-              <h3 className="action">
-                {(() => {
-                  if (recommended_action.length <= 60) return recommended_action;
-                  const cut = recommended_action.lastIndexOf(' ', 55);
-                  return (cut > 0 ? recommended_action.slice(0, cut) : recommended_action.slice(0, 55)) + '…';
-                })()}
-              </h3>
               <p className="reason">{recommended_action}</p>
 
               <div className="recommend-meta">
@@ -229,11 +233,21 @@ function Results({ setRoute }) {
               <div className="lbl">
                 <div className="title">Escalation draft</div>
                 <div className="meta">
-                  Tone · {currentDraft.label} · {wordCount} words
+                  {noDrafts ? 'No draft generated' : `Tone · ${currentDraft.label} · ${wordCount} words`}
                 </div>
               </div>
             </div>
 
+            {noDrafts ? (
+              <div style={{ padding: '24px 0', color: 'var(--ink-2)', fontSize: 14, lineHeight: 1.6 }}>
+                The analysis didn&rsquo;t produce a draft email. Please try uploading the document again, or use a text description of your dispute.
+                <div style={{ marginTop: 20 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => { setRoute('upload'); window.scrollTo({ top: 0, behavior: 'instant' }); }}>
+                    Try again <span className="arrow">→</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="draft">
               <div className="draft-head">
                 <span className="label">Draft / Tone · {currentDraft.label}</span>
@@ -286,6 +300,7 @@ function Results({ setRoute }) {
                 </div>
               </div>
             </div>
+            )}
           </div>
 
         </div>
