@@ -84,9 +84,39 @@ module.exports = async function handler(req, res) {
 
   const { file, mimeType, fileName, description } = body;
 
+  // ── Input validation ───────────────────────────────────────────────────────
+
+  const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  const MAX_DESCRIPTION_CHARS = 3000;
+
+  // Both missing
   if (!file && !description) {
     res.status(400).json({
       error: 'Please provide either a file upload or a text description of your dispute.',
+    });
+    return;
+  }
+
+  // Whitespace-only description
+  if (!file && typeof description === 'string' && description.trim().length === 0) {
+    res.status(400).json({
+      error: 'Please describe your dispute in a few words before analysing.',
+    });
+    return;
+  }
+
+  // Description too long
+  if (description && description.length > MAX_DESCRIPTION_CHARS) {
+    res.status(400).json({
+      error: `Description is too long. Please keep it under ${MAX_DESCRIPTION_CHARS} characters.`,
+    });
+    return;
+  }
+
+  // mimeType allowlist for file uploads
+  if (file && mimeType && !ALLOWED_MIME_TYPES.includes(mimeType)) {
+    res.status(400).json({
+      error: 'Unsupported file type. Please upload a JPG, PNG, WebP, or PDF.',
     });
     return;
   }
@@ -123,7 +153,9 @@ module.exports = async function handler(req, res) {
         },
       });
       if (fileName) {
-        parts.push({ text: `The uploaded file is named: ${fileName}` });
+        // Strip newlines and limit length to prevent prompt injection via filename
+        const safeName = String(fileName).replace(/[\r\n]/g, ' ').slice(0, 120);
+        parts.push({ text: `The uploaded file is named: ${safeName}` });
       }
     } else {
       parts.push({
@@ -154,10 +186,10 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Light validation
+    // Light validation — use explicit undefined/null check so 0 and "" don't falsely fail
     const required = ['issue_type', 'severity', 'summary', 'draft_emails'];
     for (const key of required) {
-      if (!data[key]) {
+      if (data[key] === undefined || data[key] === null) {
         throw new Error(`Model response missing required field: ${key}`);
       }
     }
