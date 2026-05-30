@@ -15,8 +15,9 @@ function Upload({ setRoute }) {
   ];
 
   // ── Global state store (shared with Processing + Results) ──────────────────
+  // sessionId prevents a stale pending promise from clobbering a newer analysis
   const initResolveState = () => {
-    window.resolveState = { promise: null, data: null, error: null };
+    window.resolveState = { promise: null, data: null, error: null, sessionId: Date.now() };
   };
 
   // ── Navigate to processing after kicking off the API call ─────────────────
@@ -49,7 +50,13 @@ function Upload({ setRoute }) {
     const reader = new FileReader();
     reader.onload = () => {
       // Strip the "data:<mime>;base64," prefix — send only the raw base64 data
-      const base64 = reader.result.split(',')[1];
+      const parts = reader.result.split(',');
+      const base64 = parts.length > 1 ? parts[1] : null;
+      if (!base64) {
+        setErrorMsg('Could not read the file. Please try a different file.');
+        setStatus('error');
+        return;
+      }
       const fetchPromise = fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,6 +172,8 @@ Regards,
   const onPick = (e) => {
     const f = e.target.files?.[0];
     if (f) analyzeFile(f);
+    // Reset so the same file can be re-selected after an error
+    e.target.value = '';
   };
 
   const isReading = status === 'reading';
@@ -253,7 +262,7 @@ Regards,
               <input
                 ref={inputRef}
                 type="file"
-                accept=".jpg,.jpeg,.png,.pdf"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
                 style={{ display: 'none' }}
                 onChange={onPick}
               />
