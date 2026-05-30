@@ -20,7 +20,14 @@ function extractSubjectAndBody(draftText) {
 function gmailComposeUrl(draftText) {
   const { subject, body } = extractSubjectAndBody(draftText);
   const base = 'https://mail.google.com/mail/?view=cm';
-  return `${base}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const su = encodeURIComponent(subject);
+  let bd = encodeURIComponent(body);
+  // Gmail URL limit ~2000 chars — truncate body if needed rather than silently dropping it
+  const full = `${base}&su=${su}&body=${bd}`;
+  if (full.length <= 1900) return full;
+  const maxBodyChars = Math.floor((1900 - base.length - su.length - 12) / 3);
+  const truncated = body.slice(0, maxBodyChars) + '\n\n[Copy the full draft from ResolveAI]';
+  return `${base}&su=${su}&body=${encodeURIComponent(truncated)}`;
 }
 
 // ── ActionPage ─────────────────────────────────────────────────────────────
@@ -40,8 +47,21 @@ function ActionPage({ setRoute }) {
   // ── Copy escalation ──────────────────────────────────────────────────────
   const handleCopy = () => {
     const text = draftText;
-    if (navigator.clipboard && text) {
-      navigator.clipboard.writeText(text).catch(() => {});
+    if (!text) return;
+    const doFallbackCopy = () => {
+      // execCommand fallback for browsers without clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(doFallbackCopy);
+    } else {
+      doFallbackCopy();
     }
     setCopiedIdx(0);
     setTimeout(() => setCopiedIdx(null), 2000);
@@ -93,10 +113,13 @@ function ActionPage({ setRoute }) {
 
   // ── Generate stronger ────────────────────────────────────────────────────
   const handleStronger = () => {
-    // Switch to Firm tone if available, otherwise keep current
     if (state.allDrafts) {
       const firm = state.allDrafts.find((d) => d.label === 'Firm');
-      if (firm) window.resolveState.activeDraft = firm;
+      if (firm) {
+        window.resolveState.activeDraft = firm;
+        // Signal results page to open on the Firm variant, not index 0
+        window.resolveState.requestedVariant = 'Firm';
+      }
     }
     setRoute('results');
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -207,9 +230,9 @@ function FeedbackBlock() {
   const options = ['Got refund', 'Company responded', 'Still unresolved'];
 
   const messages = {
-    'Got refund': '— Excellent. We learn from every win.',
-    'Company responded': '— Good. Keep us posted if you need a follow-up draft.',
-    'Still unresolved': '— We’ll suggest the next escalation tier. Check your inbox.',
+    ‘Got refund’: ‘— Excellent. The escalation worked.’,
+    ‘Company responded’: ‘— Good progress. If they stall again, come back for the firm-tone draft.’,
+    ‘Still unresolved’: ‘— Use the Firm draft next, then escalate to the regulatory body listed in your fallback path.’,
   };
 
   return (
