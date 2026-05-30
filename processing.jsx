@@ -11,6 +11,8 @@ function Processing({ setRoute }) {
 
   React.useEffect(() => {
     const promise = window.resolveState?.promise;
+    // Capture session ID at mount — guards against stale promises from a prior analysis
+    const mySession = window.resolveState?.sessionId;
 
     // Guard: if someone lands here without a promise, send them back
     if (!promise) {
@@ -19,7 +21,6 @@ function Processing({ setRoute }) {
     }
 
     // Step animation — advances every ~1.6 s regardless of API speed
-    // We stop it once the promise resolves
     let stepIdx = 0;
     let animRunning = true;
     const advance = () => {
@@ -38,12 +39,13 @@ function Processing({ setRoute }) {
         animRunning = false;
         clearTimeout(animTimer);
 
+        // If a newer analysis has started, discard this stale result
+        if (window.resolveState?.sessionId !== mySession) return;
+
         if (data && data.error) {
-          // Structured error from our API
           window.resolveState.error = data.error;
           window.resolveState.data = null;
         } else if (data && data.issue_type) {
-          // Valid response
           window.resolveState.data = data;
           window.resolveState.error = null;
         } else {
@@ -51,7 +53,6 @@ function Processing({ setRoute }) {
           window.resolveState.data = null;
         }
 
-        // Show the last step as "done" briefly before navigating
         setActive(steps.length - 1);
         setTimeout(() => {
           setRoute('results');
@@ -61,6 +62,7 @@ function Processing({ setRoute }) {
       .catch(() => {
         animRunning = false;
         clearTimeout(animTimer);
+        if (window.resolveState?.sessionId !== mySession) return;
         window.resolveState.error = 'Connection error. Please check your network and try again.';
         window.resolveState.data = null;
         setFailed(true);
