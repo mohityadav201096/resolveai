@@ -26,16 +26,16 @@ Analyse the document or description provided and return ONLY a valid JSON object
 
 Return exactly this structure:
 {
-  "issue_type": "string — one of: Refund Delay | Flight Cancelled | Wrong Product | Return Rejected | No Support Response | Billing Error | Other",
-  "company_name": "string — the airline or e-commerce brand name extracted from the document, or 'Unknown'",
+  "issue_type": "string — one of: Refund Delay | Flight Cancelled | Wrong Product | Return Rejected | No Support Response | Billing Error | Food Delivery Issue | Other",
+  "company_name": "string — the airline, e-commerce, food delivery, or service brand name extracted from the document, or 'Unknown'",
   "severity": "High | Medium | Low",
   "summary": "string — 2–3 sentences in plain English: what happened, why it is a legitimate grievance, and what stage the user is at",
   "recommended_action": "string — the single most effective next step the consumer should take right now (be specific: name the channel, the deadline, the regulatory hook)",
   "confidence_score": integer between 0 and 100,
   "escalation_path": {
-    "next_step": "string — who to contact (e.g. Nodal Officer, Grievance Officer, Consumer Forum)",
+    "next_step": "string — who to contact (e.g. Nodal Officer, Grievance Officer, Consumer Forum, FSSAI)",
     "expected_reply": "string — realistic timeline e.g. '5–7 business days'",
-    "fallback": "string — the regulatory body to escalate to if ignored (e.g. DGCA, NCDRC, Consumer Court)",
+    "fallback": "string — the regulatory body to escalate to if ignored (e.g. DGCA, NCDRC, Consumer Court, FSSAI, National Consumer Helpline)",
     "likelihood": "Strong | Moderate | Uncertain"
   },
   "draft_emails": {
@@ -45,14 +45,43 @@ Return exactly this structure:
   }
 }
 
-Rules:
-- Airline disputes: cite DGCA regulations, suggest Nodal Officer contact, reference 7-day response expectation under CAR.
-- E-commerce disputes: cite Consumer Protection Act 2019, suggest Grievance Officer, reference 30-day refund norm.
-- Severity: High = money held >15 days OR defective item return denied; Medium = delay within norms but unacknowledged; Low = process ongoing but slow.
+Classification rules (use the FIRST matching rule):
+- issue_type = "Flight Cancelled" if an airline cancelled or significantly delayed a flight and the consumer seeks a refund or compensation.
+- issue_type = "Refund Delay" if money was paid and a refund was promised or acknowledged but not credited within the stated window, for any sector (airline, rail, e-commerce).
+- issue_type = "Wrong Product" if the item delivered is different from what was ordered, counterfeit, or significantly misdescribed.
+- issue_type = "Return Rejected" if the consumer raised a return/replacement request and the seller or platform denied it or stopped responding after initiating it.
+- issue_type = "Billing Error" if the consumer was charged the wrong amount, charged twice, or charged for something not ordered.
+- issue_type = "Food Delivery Issue" if the dispute involves a food delivery platform (Zomato, Swiggy, etc.) — including wrong items, missing items, food quality complaints, foodborne illness, or delayed delivery.
+- issue_type = "No Support Response" if the core complaint is that the company's grievance/support channel acknowledged the complaint but closed it without resolution, or stopped responding entirely — and no other specific category above fits better.
+- issue_type = "Other" only if none of the above categories apply.
+
+Sector-specific rules:
+- Airline disputes: cite DGCA Civil Aviation Requirements (CAR), suggest Nodal Officer contact, reference 7-day response expectation. For international flights also cite ICAO/Montreal Convention where relevant.
+- Railway disputes: cite Railway Claims Tribunal Act 1987, suggest Divisional Railway Manager or TDR filing via IRCTC, mention National Consumer Helpline (1800-11-4000) as fallback.
+- E-commerce disputes: cite Consumer Protection Act 2019 and E-Commerce Rules 2020, suggest Grievance Officer, reference 30-day refund norm.
+- Food delivery disputes: cite Consumer Protection Act 2019 and Food Safety and Standards Act 2006, suggest platform Grievance Officer and FSSAI complaint (if food safety issue), reference 48-hour resolution expectation for food apps.
+- Banking/payments disputes: cite RBI guidelines, suggest bank Nodal Officer, reference 30-day resolution timeline.
+
+Severity rules:
+- High = money held >15 days OR defective/wrong item return denied OR food safety/health risk involved OR critical service failure.
+- Medium = delay within standard norms but complaint unacknowledged OR item issue acknowledged but resolution stalled.
+- Low = process ongoing and within normal timelines but consumer needs guidance.
+
+Confidence score calibration:
+- Score 90–100 only when a document with clear evidence (screenshots, order IDs, receipts, email trails) is provided AND the facts are unambiguous.
+- Score 70–89 for clear text descriptions with specific order IDs / dates / amounts.
+- Score 50–69 for vague descriptions without supporting references.
+- Score below 50 when the facts are unclear or the dispute may not constitute a valid consumer grievance.
+
+Draft email rules:
 - Draft emails must use [Your Name], [Your Phone], [Your Email] as placeholders.
-- If a PNR, order ID, ticket number, or booking reference is visible in the document, include it in the draft emails.
+- If a PNR, order ID, ticket number, TDR number, or booking reference is visible in the document, include it in the draft emails.
 - All three draft tones must have meaningfully different content — not just the same email with minor edits.
-- Return ONLY the JSON object. Nothing else.`;
+- Standard: professional, factual, gives the company one last chance with a clear deadline.
+- Firm: direct, names the specific regulatory body and consequence, shorter.
+- Brief: 3–4 sentences maximum, still respectful, designed for quick copy-paste.
+
+Return ONLY the JSON object. Nothing else.`;
 
 // ── Handler ────────────────────────────────────────────────────────────────
 
@@ -128,6 +157,29 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  // ── Retry helper — one automatic retry for transient failures ─────────────
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const callGemini = async (model, payload, attempt = 1) => {
+    try {
+      return await model.generateContent(payload);
+    } catch (err) {
+      const isRateLimit =
+        err.message?.includes('429') ||
+        err.message?.toLowerCase().includes('quota') ||
+        err.message?.toLowerCase().includes('rate') ||
+        err.status === 429;
+
+      // Retry once after 2s for transient / rate-limit errors
+      if (attempt === 1 && !isRateLimit) {
+        console.warn('[ResolveAI] Transient error on attempt 1, retrying:', err.message);
+        await sleep(2000);
+        return callGemini(model, payload, 2);
+      }
+      throw err;
+    }
+  };
+
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -166,7 +218,7 @@ module.exports = async function handler(req, res) {
     // System prompt goes last
     parts.push({ text: SYSTEM_PROMPT });
 
-    const result = await model.generateContent({
+    const result = await callGemini(model, {
       contents: [{ role: 'user', parts }],
     });
 
@@ -198,6 +250,21 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('[ResolveAI] Error:', err.message);
+
+    // Detect Gemini rate-limit errors (HTTP 429) — give a user-friendly message
+    const isRateLimit =
+      err.message?.includes('429') ||
+      err.message?.toLowerCase().includes('quota') ||
+      err.message?.toLowerCase().includes('rate') ||
+      err.status === 429;
+
+    if (isRateLimit) {
+      res.status(429).json({
+        error: 'Too many requests — our AI is busy right now. Please wait 30 seconds and try again.',
+      });
+      return;
+    }
+
     res.status(500).json({
       error: 'Analysis failed. Please try again — if this keeps happening, try a different file format.',
     });
