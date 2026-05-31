@@ -174,13 +174,13 @@ function ActionPage({ setRoute }) {
 
         {/* Placeholder reminder */}
         <div style={{
-          background: 'var(--warn-soft, #fff8e6)',
-          border: '1px solid var(--warn, #b8860b)',
-          borderRadius: 4,
+          background: 'var(--warn-soft)',
+          border: '1px solid var(--warn)',
+          borderRadius: 'var(--radius-sm)',
           padding: '10px 16px',
           marginBottom: 28,
           fontSize: 13,
-          color: 'var(--warn, #7a5700)',
+          color: 'var(--warn)',
           lineHeight: 1.55,
         }}>
           Before sending — replace <strong>[Your Name]</strong>, <strong>[Your Phone]</strong>, and <strong>[Your Email]</strong> in the draft with your real details.
@@ -207,12 +207,17 @@ function ActionPage({ setRoute }) {
         <p style={{
           marginTop: 56,
           fontFamily: 'var(--serif)',
-          fontStyle: 'italic',
-          fontSize: 22,
-          lineHeight: 1.4,
+          fontStyle: 'normal',
+          fontWeight: 500,
+          fontSize: 18,
+          lineHeight: 1.6,
           color: 'var(--ink-2)',
           maxWidth: '52ch',
           letterSpacing: '-0.008em',
+          padding: '20px 24px',
+          background: 'var(--accent-soft)',
+          borderRadius: 'var(--radius)',
+          borderLeft: '3px solid var(--accent)',
         }}>
           A clear, deadline-driven escalation is more likely to be taken seriously than a follow-up support ticket.
         </p>
