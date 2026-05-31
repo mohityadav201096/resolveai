@@ -383,3 +383,6 @@ function Feedback({ setRoute }) {
 
 window.ActionPage = ActionPage;
 window.Feedback = Feedback;
+
+window.ActionPage = ActionPage;
+window.Feedback = Feedback;
