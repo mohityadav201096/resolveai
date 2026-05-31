@@ -342,3 +342,5 @@ function Results({ setRoute }) {
 }
 
 window.Results = Results;
+
+window.Results = Results;
