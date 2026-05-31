@@ -30,3 +30,5 @@ function Nav({ route, setRoute }) {
     </nav>
   );
 }
+
+window.Nav = Nav;
