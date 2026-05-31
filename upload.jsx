@@ -199,13 +199,13 @@ Regards,
         {/* Error message */}
         {status === 'error' && (
           <div style={{
-            background: 'var(--accent-bg, #fff5f5)',
-            border: '1px solid var(--accent, #c0392b)',
-            borderRadius: 4,
+            background: 'var(--danger-soft)',
+            border: '1px solid var(--danger)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 16px',
             marginBottom: 24,
             fontSize: 14,
-            color: 'var(--accent, #c0392b)',
+            color: 'var(--danger)',
           }}>
             {errorMsg}
           </div>
@@ -305,26 +305,28 @@ Regards,
               justifyContent: 'space-between',
               alignItems: 'baseline',
               paddingBottom: 14,
-              borderBottom: '1px solid var(--ink)',
+              borderBottom: '1px solid var(--line-2)',
               marginBottom: 24,
               fontFamily: 'var(--mono)',
               fontSize: 10.5,
-              letterSpacing: '0.14em',
+              letterSpacing: '0.10em',
               textTransform: 'uppercase',
+              color: 'var(--mute)',
             }}>
               <span>Sample · live</span>
-              <span style={{ color: 'var(--mute)' }}>fig. 01</span>
+              <span>fig. 01</span>
             </div>
 
             <h4 style={{
               fontFamily: 'var(--serif)',
-              fontSize: 28,
-              fontWeight: 400,
-              lineHeight: 1.05,
+              fontSize: 24,
+              fontWeight: 700,
+              lineHeight: 1.2,
               letterSpacing: '-0.012em',
               margin: '0 0 12px 0',
+              color: 'var(--ink)',
             }}>
-              What the <em style={{ fontStyle: 'italic', color: 'var(--accent)' }}>analysis</em> looks like.
+              What the <em style={{ fontStyle: 'normal', color: 'var(--accent)' }}>analysis</em> looks like.
             </h4>
             <p style={{
               color: 'var(--ink-2)',
