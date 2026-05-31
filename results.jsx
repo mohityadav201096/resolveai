@@ -93,7 +93,8 @@ function Results({ setRoute }) {
   const displayCompany = company_name && company_name !== 'Unknown' ? company_name : null;
 
   // Severity colour
-  const sevColor = severity === 'High' ? 'var(--accent, #c0392b)' : severity === 'Low' ? 'var(--ink-2)' : 'var(--ink)';
+  const sevColor = severity === 'High' ? 'var(--danger)' : severity === 'Low' ? 'var(--ok)' : 'var(--warn)';
+  const sevTag = severity === 'High' ? 'danger' : severity === 'Low' ? 'ok' : 'warn';
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCopy = () => {
@@ -166,7 +167,7 @@ function Results({ setRoute }) {
                 <span className="v" style={{ color: sevColor }}>
                   {severity}
                 </span>
-                <span className="tag warn">{severity}</span>
+                <span className={`tag ${sevTag}`}>{severity}</span>
               </div>
 
               <div className="row">
