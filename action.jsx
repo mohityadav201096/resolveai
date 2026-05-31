@@ -35,6 +35,18 @@ function gmailComposeUrl(draftText) {
 function ActionPage({ setRoute }) {
   const [copiedIdx, setCopiedIdx] = React.useState(null);
   const [pdfMsg, setPdfMsg] = React.useState('');
+  const [followupDays, setFollowupDays] = React.useState(7);
+  const [followupLoading, setFollowupLoading] = React.useState(false);
+
+  // Restore from sessionStorage if needed
+  React.useEffect(() => {
+    if (!window.resolveState?.data) {
+      try {
+        const saved = sessionStorage.getItem('resolveai_state');
+        if (saved) { const p = JSON.parse(saved); window.resolveState = { ...(window.resolveState || {}), ...p }; }
+      } catch {}
+    }
+  }, []);
 
   const state = window.resolveState || {};
   const activeDraft = state.activeDraft || state.allDrafts?.[0] || null;
@@ -125,6 +137,38 @@ function ActionPage({ setRoute }) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
+  // ── Follow-up generator ──────────────────────────────────────────────────
+  const handleFollowup = async () => {
+    if (followupLoading) return;
+    setFollowupLoading(true);
+    const originalContext = data ? JSON.stringify({
+      issue_type: data.issue_type, company_name: data.company_name,
+      severity: data.severity, escalation_path: data.escalation_path,
+      summary: data.summary,
+    }) : '';
+    try {
+      const fetchPromise = fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'followup', originalContext, originalDraft: draftText, daysElapsed: followupDays }),
+      }).then((r) => r.json());
+      const timeout = new Promise((resolve) => setTimeout(() => resolve({ error: 'Timed out. Please try again.' }), 28000));
+      const result = await Promise.race([fetchPromise, timeout]);
+      window.resolveState = { ...(window.resolveState || {}), data: result.error ? null : result, error: result.error || null, sessionId: Date.now(), promise: null };
+      try { sessionStorage.setItem('resolveai_state', JSON.stringify({ data: result.error ? null : result, error: result.error || null })); } catch {}
+      setRoute('results');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    } catch {
+      setFollowupLoading(false);
+    }
+  };
+
+  // ── Analyse their response ───────────────────────────────────────────────
+  const handleAnalyzeResponse = () => {
+    setRoute('response-analyzer');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
   const tiles = [
     {
       idx: '01',
@@ -151,6 +195,12 @@ function ActionPage({ setRoute }) {
       label: <span>Generate <em>stronger</em></span>,
       desc: 'Switch to the firm escalation tone',
       action: handleStronger,
+    },
+    {
+      idx: '05',
+      label: <span>Analyse <em>their reply</em></span>,
+      desc: 'Paste what they sent you — get a counter-response',
+      action: handleAnalyzeResponse,
     },
   ];
 
@@ -204,8 +254,30 @@ function ActionPage({ setRoute }) {
           ))}
         </div>
 
+        {/* Follow-up generator */}
+        <div style={{ marginTop: 48, padding: '24px', background: 'var(--bg-elev)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line-2)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>No reply yet? Generate a follow-up.</div>
+          <div style={{ fontSize: 13, color: 'var(--mute)', marginBottom: 16 }}>We will escalate the tone, reference your original email, and set a regulatory deadline.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: 13, color: 'var(--ink-2)', fontWeight: 500 }}>Days since you sent it:</label>
+            <input
+              type="number" min="1" max="90" value={followupDays}
+              onChange={(e) => setFollowupDays(Math.max(1, parseInt(e.target.value, 10) || 7))}
+              style={{ width: 72, padding: '6px 10px', border: '1px solid var(--line-2)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--ink)', background: '#fff' }}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleFollowup}
+              disabled={followupLoading}
+              style={{ opacity: followupLoading ? 0.7 : 1 }}
+            >
+              {followupLoading ? 'Generating...' : 'Generate follow-up'} <span className="arrow">→</span>
+            </button>
+          </div>
+        </div>
+
         <p style={{
-          marginTop: 56,
+          marginTop: 32,
           fontFamily: 'var(--serif)',
           fontStyle: 'normal',
           fontWeight: 500,
