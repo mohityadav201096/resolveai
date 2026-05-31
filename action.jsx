@@ -235,9 +235,9 @@ function FeedbackBlock() {
   const options = ['Got refund', 'Company responded', 'Still unresolved'];
 
   const messages = {
-    ‘Got refund’: ‘— Excellent. The escalation worked.’,
-    ‘Company responded’: ‘— Good progress. If they stall again, come back for the firm-tone draft.’,
-    ‘Still unresolved’: ‘— Use the Firm draft next, then escalate to the regulatory body listed in your fallback path.’,
+    'Got refund': '— Excellent. The escalation worked.',
+    'Company responded': '— Good progress. If they stall again, come back for the firm-tone draft.',
+    'Still unresolved': '— Use the Firm draft next, then escalate to the regulatory body listed in your fallback path.',
   };
 
   return (
