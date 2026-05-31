@@ -232,3 +232,5 @@ function Landing({ setRoute }) {
     </div>
   );
 }
+
+window.Landing = Landing;
