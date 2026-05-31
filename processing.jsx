@@ -89,6 +89,8 @@ function Processing({ setRoute }) {
           <span style={{ color: 'var(--mute)' }}>Gemini 2.5 Flash</span>
         </div>
 
+        {!failed && <div className="processing-spinner"></div>}
+
         <div key={active} className="processing-msg fade-in">
           {failed ? 'Something went wrong…' : steps[active]}
         </div>
