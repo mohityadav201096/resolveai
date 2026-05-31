@@ -1,33 +1,32 @@
-// ResolveAI v2 — Nav (editorial masthead)
+// ResolveAI — Nav (redesigned)
 function Nav({ route, setRoute }) {
-  const [scrolled, setScrolled] = React.useState(false);
-  React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const go = (r) => (e) => {
-    e.preventDefault();
-    setRoute(r);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  };
-
   return (
-    <nav className={"nav" + (scrolled ? " is-scrolled" : "")}>
-      <div className="nav-inner">
-        <a href="#" onClick={go('landing')} className="nav-logo">
-          <span>Resolve<em>AI</em></span>
-          <span className="sub">est. 26</span>
-        </a>
+    <nav className="nav">
+      <div className="nav-inner page">
+        {/* Logo */}
+        <button
+          className="nav-logo"
+          onClick={() => { setRoute('landing'); window.scrollTo({ top: 0, behavior: 'instant' }); }}
+        >
+          <div className="nav-logo-icon">R</div>
+          <span className="nav-logo-text">ResolveAI</span>
+        </button>
+
+        {/* Nav links */}
         <div className="nav-links">
-          <a href="#how" onClick={go('landing')} className={route==='landing' ? 'is-active' : ''}>Method</a>
-          <a href="#example" onClick={go('results')} className={route==='results' ? 'is-active' : ''}>Specimen</a>
-          <a href="#privacy" onClick={(e)=>e.preventDefault()} className="hide-mobile">Privacy</a>
+          <a href="#how" className="nav-link">How it works</a>
+          <a href="#example" className="nav-link">Example</a>
+          <a href="#privacy" className="nav-link">Privacy</a>
         </div>
+
+        {/* CTA */}
+        <button
+          className="nav-cta btn btn-primary btn-sm"
+          onClick={() => { setRoute('upload'); window.scrollTo({ top: 0, behavior: 'instant' }); }}
+        >
+          Start free <span className="arrow">→</span>
+        </button>
       </div>
     </nav>
   );
 }
-
-window.Nav = Nav;
