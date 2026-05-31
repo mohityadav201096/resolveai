@@ -23,7 +23,7 @@ function App() {
 
   return (
     <>
-      <Nav setRoute={navigate} currentRoute={route} />
+      <Nav setRoute={navigate} route={route} />
       <main>{renderRoute()}</main>
     </>
   );
